@@ -113,42 +113,62 @@ export default function App() {
 
   // --- REQUIREMENT 3: SAVE PROGRESS ON GAME OVER ---
   useEffect(() => {
-    if (gameState === 'gameover' && score > 0) {
+    // Só salva se o jogo terminou E tem pontos E não estamos salvando no momento
+    if (gameState === 'gameover' && score > 0 && saveStatus !== 'saving' && saveStatus !== 'success') {
       saveProgress();
     }
-  }, [gameState]);
+  }, [gameState, score]); // Adicionado score para garantir que pegamos o valor final
 
   const saveProgress = async () => {
-    if (!playerInfo) return;
-    setSaveStatus('saving');
+    if (!playerInfo || !playerInfo.id) {
+      console.error("Não foi possível salvar: ID do jogador não encontrado.");
+      return;
+    }
 
-    const experienceGained = Math.floor(score / 10);
+    setSaveStatus('saving');
+    const finalScore = score; // Captura valor atual
+    const experienceGained = Math.floor(finalScore / 10);
+
+    console.log("Iniciando sincronização com Galeria...", {
+      player_id: playerInfo.id,
+      score: finalScore,
+      xp: experienceGained
+    });
 
     try {
-      // 1. Log match in game_scores
+      // 1. Registrar a partida na tabela central game_scores
+      // Nota: O gatilho no banco cuidará de atualizar o accumulated_xp automaticamente
       const { error: logError } = await supabase
         .from('game_scores')
         .insert({
           player_id: playerInfo.id,
           game_id: 'acorde-maker',
-          score: score,
+          score: finalScore,
           experience_gained: experienceGained,
           metadata: {
-            levelReached: currentLevel
+            levelReached: currentLevel,
+            timestamp: new Date().toISOString()
           }
         });
 
-      // 2. Update player stats via RPC (XP Gained)
-      const { error: updateError } = await supabase.rpc('increment_player_stats', {
-        p_player_id: playerInfo.id,
-        p_xp_gain: experienceGained,
-        p_coins_gain: 0
-      });
+      if (logError) throw logError;
 
-      if (logError || updateError) throw logError || updateError;
+      // 2. Atualiza as estatísticas de 'total_xp' via RPC (Backup/Moedas)
+      // Se este falhar mas o insert acima der certo, os pontos já aparecerão na galeria
+      try {
+        await supabase.rpc('increment_player_stats', {
+          p_player_id: playerInfo.id,
+          p_xp_gain: experienceGained,
+          p_coins_gain: 0
+        });
+      } catch (rpcErr) {
+        console.warn("RPC increment_player_stats falhou, mas o score principal foi salvo.", rpcErr);
+      }
+
+      console.log("Sucesso! Pontos registrados na Galeria.");
       setSaveStatus('success');
-    } catch (err) {
-      console.error('Erro ao sincronizar com a Galeria:', err);
+    } catch (err: any) {
+      console.error('Erro crítico ao sincronizar com a Galeria:', err.message || err);
       setSaveStatus('error');
     }
   };
@@ -308,6 +328,7 @@ export default function App() {
           </p>
           <a
             href="https://acordegallery.vercel.app"
+            target="_top"
             className="block w-full py-4 bg-white text-slate-950 rounded-2xl font-bold text-lg hover:bg-slate-200 transition-all active:scale-95 shadow-xl"
           >
             Ir para Acorde Gallery
@@ -319,12 +340,12 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col transition-colors duration-500 overflow-hidden ${t(theme, 'bg-slate-950 text-white', 'bg-zinc-50 text-slate-900')}`}
+      className={`fixed inset-0 flex flex-col transition-colors duration-500 overflow-hidden ${t(theme, 'bg-slate-950 text-white', 'bg-zinc-50 text-slate-900')}`}
       onPointerUp={handlePointerUp}
     >
-      <header className={`p-3 md:p-4 flex justify-between items-center border-b sticky top-0 z-50 transition-colors ${t(theme, 'bg-slate-900 border-slate-800 shadow-xl', 'bg-white border-zinc-200 shadow-sm')}`}>
+      <header className={`p-2 md:p-4 flex justify-between items-center border-b sticky top-0 z-50 transition-colors ${t(theme, 'bg-slate-900 border-slate-800 shadow-xl', 'bg-white border-zinc-200 shadow-sm')}`}>
         <div className="flex flex-col">
-          <h1 className={`text-lg md:text-xl font-bold ${t(theme, 'text-amber-400', 'text-amber-600')}`}>
+          <h1 className={`text-base md:text-xl font-bold ${t(theme, 'text-amber-400', 'text-amber-600')}`}>
             {playerInfo.name.split(' ')[0]}
           </h1>
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
@@ -333,11 +354,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end mr-2">
-            <div className={`text-xl font-mono font-bold leading-none ${timeLeft < 10 ? 'text-red-500 animate-pulse' : t(theme, 'text-white', 'text-slate-900')}`}>
+          <div className="flex flex-col items-end mr-1">
+            <div className={`text-lg md:text-xl font-mono font-bold leading-none ${timeLeft < 10 ? 'text-red-500 animate-pulse' : t(theme, 'text-white', 'text-slate-900')}`}>
               {timeLeft}s
             </div>
-            <div className="text-[8px] text-slate-500 font-bold uppercase">Tempo</div>
+            <div className="text-[7px] text-slate-500 font-bold uppercase">Tempo</div>
           </div>
 
           <button
@@ -349,6 +370,7 @@ export default function App() {
 
           <a
             href="https://acordegallery.vercel.app"
+            target="_top"
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${t(theme, 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white', 'bg-zinc-100 border-zinc-200 text-slate-500 hover:text-slate-900')}`}
           >
             Sair
@@ -398,12 +420,12 @@ export default function App() {
           </div>
         )}
 
-        <div className="text-center mb-4 mt-2 w-full">
+        <div className="text-center mb-2 mt-0 w-full scale-90 md:scale-100 transition-transform">
           <div className="flex items-center justify-center gap-2 mb-0">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Monte este acorde</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">Monte este acorde</span>
           </div>
-          <h2 className="text-7xl font-black mb-1 tracking-tighter drop-shadow-sm">{currentChordKey}</h2>
-          <p className="text-slate-500 text-sm font-semibold">{currentChord.name}</p>
+          <h2 className="text-6xl md:text-7xl font-black mb-0 tracking-tighter drop-shadow-sm">{currentChordKey}</h2>
+          <p className="text-slate-500 text-[10px] md:text-sm font-semibold uppercase">{currentChord.name}</p>
 
           <div className="max-w-[200px] mx-auto mt-4 mb-2">
             <div className={`h-1.5 w-full rounded-full overflow-hidden ${t(theme, 'bg-slate-800', 'bg-zinc-200')}`}>
@@ -427,7 +449,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className={`relative rounded-[2rem] p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
+        <div className={`relative rounded-[2rem] p-4 md:p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
           <div className="flex justify-between w-56 mb-3 px-2 mx-auto">
             {renderStrings.map(s => {
               const isUnmuted = currentChord.unmutedStrings.includes(s);
@@ -439,7 +461,7 @@ export default function App() {
             })}
           </div>
 
-          <div className="w-56 h-[380px] relative flex flex-col mx-auto">
+          <div className="w-56 h-[40vh] min-h-[300px] max-h-[420px] relative flex flex-col mx-auto">
             <div className={`h-4 rounded-t-xl w-full shrink-0 z-20 shadow-md ${t(theme, 'bg-slate-500', 'bg-slate-300')}`}></div>
 
             <div className="flex-1 flex flex-col relative touch-none">
@@ -495,13 +517,13 @@ export default function App() {
           </div>
         </div>
 
-        <div className="mt-4 text-center px-4 min-h-[30px]">
+        <div className="mt-2 text-center px-4 min-h-[24px]">
           {feedback.status === 'correct' ? (
-            <div className="text-emerald-500 font-black animate-bounce text-2xl tracking-tight">
+            <div className="text-emerald-500 font-black animate-bounce text-xl tracking-tight">
               {feedback.message} <span className="text-sm">+5s</span>
             </div>
           ) : (
-            <div className="text-slate-400 italic text-sm font-medium uppercase tracking-tight">
+            <div className="text-slate-400 italic text-[10px] font-medium uppercase tracking-tight">
               "{MOTIVATIONAL_MESSAGES[score % MOTIVATIONAL_MESSAGES.length]}"
             </div>
           )}
@@ -538,6 +560,8 @@ export default function App() {
 
       <style dangerouslySetInnerHTML={{
         __html: `
+        * { touch-action: manipulation; }
+        body { overflow: hidden; position: fixed; width: 100%; height: 100%; }
         .fret-board-container::-webkit-scrollbar { display: none; }
         .fret-board-container { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes zoom-in-50 {
