@@ -137,7 +137,6 @@ export default function App() {
 
     try {
       // 1. Registrar a partida na tabela central game_scores
-      // Nota: O gatilho no banco cuidará de atualizar o accumulated_xp automaticamente
       const { error: logError } = await supabase
         .from('game_scores')
         .insert({
@@ -153,8 +152,7 @@ export default function App() {
 
       if (logError) throw logError;
 
-      // 2. Atualiza as estatísticas de 'total_xp' via RPC (Backup/Moedas)
-      // Se este falhar mas o insert acima der certo, os pontos já aparecerão na galeria
+      // 2. Backup RPC call
       try {
         await supabase.rpc('increment_player_stats', {
           p_player_id: playerInfo.id,
@@ -162,13 +160,18 @@ export default function App() {
           p_coins_gain: 0
         });
       } catch (rpcErr) {
-        console.warn("RPC increment_player_stats falhou, mas o score principal foi salvo.", rpcErr);
+        console.warn("RPC ignored", rpcErr);
       }
 
-      console.log("Sucesso! Pontos registrados na Galeria.");
+      console.log("Sucesso! Pontos registrados.");
       setSaveStatus('success');
+
+      // Se houver uma flag de redirecionamento pendente, executa agora
+      if ((window as any).pendingExit) {
+        window.top.location.href = "https://acordegallery.vercel.app";
+      }
     } catch (err: any) {
-      console.error('Erro crítico ao sincronizar com a Galeria:', err.message || err);
+      console.error('Erro crítico ao sincronizar:', err.message || err);
       setSaveStatus('error');
     }
   };
@@ -296,6 +299,7 @@ export default function App() {
     setCurrentLevel(1);
     setHintsLeft(3);
     setShowHint(false);
+    setSaveStatus('idle'); // CRÍTICO: Resetar status para permitir novos salvamentos
     const firstLevelChords = LEVELS[0].chords;
     const newQueue = shuffle(firstLevelChords);
     setCurrentChordKey(newQueue[0]);
@@ -368,13 +372,23 @@ export default function App() {
             {theme === 'dark' ? '🌙' : '☀️'}
           </button>
 
-          <a
-            href="https://acordegallery.vercel.app"
-            target="_top"
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${t(theme, 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white', 'bg-zinc-100 border-zinc-200 text-slate-500 hover:text-slate-900')}`}
+          <button
+            onClick={() => {
+              if (gameState === 'playing' && score > 0) {
+                (window as any).pendingExit = true;
+                setGameState('gameover');
+              } else if (saveStatus === 'saving') {
+                (window as any).pendingExit = true;
+                alert("Sincronizando seus pontos... Aguarde um segundo.");
+              } else {
+                window.top.location.href = "https://acordegallery.vercel.app";
+              }
+            }}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${saveStatus === 'saving' ? 'opacity-50 cursor-wait' : ''
+              } ${t(theme, 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white', 'bg-zinc-100 border-zinc-300 text-slate-500 hover:text-slate-900')}`}
           >
-            Sair
-          </a>
+            {saveStatus === 'saving' ? 'Sincronizando...' : 'Sair'}
+          </button>
         </div>
       </header>
 
