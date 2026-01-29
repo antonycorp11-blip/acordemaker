@@ -472,11 +472,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-4 md:gap-8 w-full max-w-2xl px-2">
-
-          {/* CENTRO: BRAÇO DO VIOLÃO */}
+        <div className="flex flex-col items-center w-full max-w-2xl px-2">
+          {/* BRAÇO DO VIOLÃO - CENTRALIZADO */}
           <div className={`relative rounded-[2rem] p-4 md:p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
-            <div className="flex justify-between w-48 md:w-56 mb-3 px-2 mx-auto">
+            <div className="flex justify-between w-52 md:w-56 mb-3 px-2 mx-auto">
               {renderStrings.map(s => {
                 const isUnmuted = currentChord.unmutedStrings.includes(s);
                 return (
@@ -487,7 +486,7 @@ export default function App() {
               })}
             </div>
 
-            <div className="w-48 md:w-56 h-[35vh] md:h-[40vh] min-h-[300px] max-h-[450px] relative flex flex-col mx-auto">
+            <div className="w-52 md:w-56 h-[30vh] md:h-[35vh] min-h-[280px] max-h-[420px] relative flex flex-col mx-auto">
               <div className={`h-4 rounded-t-xl w-full shrink-0 z-20 shadow-md ${t(theme, 'bg-slate-500', 'bg-slate-300')}`}></div>
 
               <div className="flex-1 flex flex-col relative touch-none">
@@ -548,24 +547,36 @@ export default function App() {
             </div>
           </div>
 
-          {/* COLUNA LATERAL DIREITA: TODOS OS BOTÕES */}
-          <div className="flex flex-col gap-3 h-full justify-center min-w-[70px] md:min-w-[90px]">
+          <div className="mt-3 text-center px-4 min-h-[20px]">
+            {feedback.status === 'correct' ? (
+              <div className="text-emerald-500 font-black animate-bounce text-lg tracking-tight">
+                {feedback.message} <span className="text-xs">+5s</span>
+              </div>
+            ) : (
+              <div className="text-slate-400 italic text-[10px] font-medium uppercase tracking-tight">
+                "{MOTIVATIONAL_MESSAGES[score % MOTIVATIONAL_MESSAGES.length]}"
+              </div>
+            )}
+          </div>
+
+          {/* BOTÕES EMBAIXO EM LINHA HORIZONTAL */}
+          <div className="flex gap-2 w-full max-w-sm mt-3">
             <button
               onClick={undo}
               disabled={history.length === 0}
-              className={`w-full h-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-1 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}
+              className={`flex-1 h-14 md:h-16 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-0.5 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
               <span className="text-[9px] uppercase font-black">Voltar</span>
             </button>
 
             <button
               onClick={useHint}
               disabled={hintsLeft <= 0 || showHint || gameState !== 'playing'}
-              className={`w-full h-20 md:h-24 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}
+              className={`flex-1 h-14 md:h-16 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
-              <span className="text-[9px] uppercase font-black mt-1">Dica</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
+              <span className="text-[9px] uppercase font-black">Dica</span>
               <div className="flex gap-0.5 mt-0.5">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className={`w-1 h-1 rounded-full ${i < hintsLeft ? 'bg-amber-500' : 'bg-slate-500'}`}></div>
@@ -575,9 +586,9 @@ export default function App() {
 
             <button
               onClick={clearFingers}
-              className={`w-full h-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-1 ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}
+              className={`flex-1 h-14 md:h-16 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-0.5 ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
               <span className="text-[9px] uppercase font-black">Limpar</span>
             </button>
           </div>
