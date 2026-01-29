@@ -212,28 +212,28 @@ export const LEVELS: LevelData[] = [
     title: 'Nível 1: Fundamentos',
     chords: ['E', 'Em', 'Am', 'A', 'Asus2', 'D', 'Dm', 'Dsus4', 'C', 'Cmaj7', 'G'],
     unlockThreshold: 0,
-    pointsPerChord: 10
+    pointsPerChord: 130
   },
   {
     id: GameLevel.MINORS,
     title: 'Nível 2: Sétimas e Expressão',
     chords: ['E7', 'A7', 'Am7', 'D7', 'G7', 'C7', 'B7'],
-    unlockThreshold: 100,
-    pointsPerChord: 25
+    unlockThreshold: 1300, // Equivale a ~10 acordes do nível 1
+    pointsPerChord: 250
   },
   {
     id: GameLevel.BARRE,
     title: 'Nível 3: O Desafio da Pestana',
     chords: ['F', 'Fm', 'Bm', 'Bm7', 'B', 'Bb', 'F#'],
-    unlockThreshold: 280,
-    pointsPerChord: 50
+    unlockThreshold: 3800, // ~10 acordes do nível 2
+    pointsPerChord: 500
   },
   {
     id: 4 as GameLevel,
     title: 'Nível 4: Mestria Cromática',
     chords: ['F#m', 'Gm', 'Cm', 'C#m', 'G#', 'G#m', 'A9'],
-    unlockThreshold: 600,
-    pointsPerChord: 100
+    unlockThreshold: 8800, // ~10 acordes do nível 3
+    pointsPerChord: 1000
   }
 ];
 

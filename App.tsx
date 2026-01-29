@@ -127,6 +127,10 @@ export default function App() {
 
     setSaveStatus('saving');
     const finalScore = score; // Captura valor atual
+    // Ajustado para refletir os novos pontos (130 por acorde básico)
+    // Se 1 acorde = 130 pts, queremos que dê aproximadamente 13 XP por acorde se XP = score/10.
+    // O usuário disse que ganhou 6 de XP em uma partida e achou pouco.
+    // Com 130 pts por acorde, 1 acerto = 13 XP. Isso parece atingir o objetivo.
     const experienceGained = Math.floor(finalScore / 10);
 
     console.log("Iniciando sincronização com Galeria...", {
@@ -463,75 +467,115 @@ export default function App() {
           </div>
         </div>
 
-        <div className={`relative rounded-[2rem] p-4 md:p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
-          <div className="flex justify-between w-56 mb-3 px-2 mx-auto">
-            {renderStrings.map(s => {
-              const isUnmuted = currentChord.unmutedStrings.includes(s);
-              return (
-                <div key={s} className={`text-sm font-bold w-6 text-center ${isUnmuted ? 'text-emerald-500' : 'text-red-500/40'}`}>
-                  {isUnmuted ? '○' : '×'}
-                </div>
-              )
-            })}
+        <div className="flex items-center justify-center gap-2 md:gap-6 w-full max-w-2xl px-2">
+          {/* BOTÃO ESQUERDA: DESFAZER */}
+          <div className="flex flex-col h-full justify-center">
+            <button
+              onClick={undo}
+              disabled={history.length === 0}
+              className={`w-12 h-24 md:w-16 md:h-32 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-2 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}
+              title="Desfazer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
+              <span className="text-[8px] uppercase tracking-tighter hidden md:block">Undo</span>
+            </button>
           </div>
 
-          <div className="w-56 h-[40vh] min-h-[300px] max-h-[420px] relative flex flex-col mx-auto">
-            <div className={`h-4 rounded-t-xl w-full shrink-0 z-20 shadow-md ${t(theme, 'bg-slate-500', 'bg-slate-300')}`}></div>
-
-            <div className="flex-1 flex flex-col relative touch-none">
-              {Array.from({ length: FRET_COUNT }).map((_, i) => (
-                <div key={i} className={`flex-1 border-b relative flex justify-between transition-colors ${t(theme, 'border-slate-800', 'border-zinc-200')}`}>
-                  <span className="absolute -left-6 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-bold font-mono">{i + 1}</span>
-
-                  {(i + 1 === 3 || i + 1 === 5) && (
-                    <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full opacity-30 ${t(theme, 'bg-slate-600', 'bg-zinc-300')}`}></div>
-                  )}
-
-                  {renderStrings.map((string) => {
-                    const visualIndex = renderStrings.indexOf(string);
-                    return (
-                      <div
-                        key={`${string}-${i + 1}`}
-                        className="absolute z-40 transition-colors hover:bg-amber-500/5 active:bg-amber-500/10 cursor-pointer"
-                        style={{ left: `${visualIndex * 16.6}%`, width: '16.6%', top: 0, height: '100%' }}
-                        onPointerDown={() => handlePointerDown(string, i + 1)}
-                        onPointerEnter={() => handlePointerEnter(string, i + 1)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-
-              {renderStrings.map((string) => {
-                const visualIndex = renderStrings.indexOf(string);
-                const thickness = 1 + (string - 1) * 0.8;
+          {/* CENTRO: BRAÇO DO VIOLÃO */}
+          <div className={`relative rounded-[2rem] p-4 md:p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
+            <div className="flex justify-between w-48 md:w-56 mb-3 px-2 mx-auto">
+              {renderStrings.map(s => {
+                const isUnmuted = currentChord.unmutedStrings.includes(s);
                 return (
-                  <div key={string} className={`absolute top-0 bottom-0 shadow-sm z-10 pointer-events-none transition-opacity ${t(theme, 'bg-slate-400 opacity-80', 'bg-slate-500 opacity-90')}`}
-                    style={{ width: `${thickness}px`, left: `${visualIndex * 16.6 + 8.3}%` }}
-                  />
-                );
-              })}
-
-              {showHint && currentChord.positions.map((pos, idx) => (
-                <div key={`hint-${idx}`} className="absolute z-30 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500/30 rounded-full border-2 border-amber-500/50 animate-pulse transition-all pointer-events-none"
-                  style={{ top: `${(pos.fret - 0.5) * (100 / FRET_COUNT)}%`, left: `${renderStrings.indexOf(pos.string) * 16.6 + 8.3}%` }}
-                />
-              ))}
-
-              {placedFingers.map((finger) => {
-                const visualIndex = renderStrings.indexOf(finger.string);
-                return (
-                  <div key={finger.id} className="absolute z-50 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500 rounded-full shadow-[0_5px_15px_rgba(245,158,11,0.5)] flex items-center justify-center text-slate-900 font-black border-4 border-white transition-all transform scale-100 animate-in zoom-in-50"
-                    style={{ top: `${(finger.fret - 0.5) * (100 / FRET_COUNT)}%`, left: `${visualIndex * 16.6 + 8.3}%` }}
-                  >
+                  <div key={s} className={`text-sm font-bold w-6 text-center ${isUnmuted ? 'text-emerald-500' : 'text-red-500/40'}`}>
+                    {isUnmuted ? '○' : '×'}
                   </div>
-                );
+                )
               })}
             </div>
+
+            <div className="w-48 md:w-56 h-[35vh] md:h-[40vh] min-h-[280px] max-h-[420px] relative flex flex-col mx-auto">
+              <div className={`h-4 rounded-t-xl w-full shrink-0 z-20 shadow-md ${t(theme, 'bg-slate-500', 'bg-slate-300')}`}></div>
+
+              <div className="flex-1 flex flex-col relative touch-none">
+                {Array.from({ length: FRET_COUNT }).map((_, i) => (
+                  <div key={i} className={`flex-1 border-b relative flex justify-between transition-colors ${t(theme, 'border-slate-800', 'border-zinc-200')}`}>
+                    <span className="absolute -left-6 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-bold font-mono">{i + 1}</span>
+
+                    {(i + 1 === 3 || i + 1 === 5) && (
+                      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full opacity-30 ${t(theme, 'bg-slate-600', 'bg-zinc-300')}`}></div>
+                    )}
+
+                    {renderStrings.map((string) => {
+                      const visualIndex = renderStrings.indexOf(string);
+                      return (
+                        <div
+                          key={`${string}-${i + 1}`}
+                          className="absolute z-40 transition-colors hover:bg-amber-500/5 active:bg-amber-500/10 cursor-pointer"
+                          style={{ left: `${visualIndex * 16.6}%`, width: '16.6%', top: 0, height: '100%' }}
+                          onPointerDown={() => handlePointerDown(string, i + 1)}
+                          onPointerEnter={() => handlePointerEnter(string, i + 1)}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {renderStrings.map((string) => {
+                  const visualIndex = renderStrings.indexOf(string);
+                  const thickness = 1 + (string - 1) * 0.8;
+                  return (
+                    <div key={string} className={`absolute top-0 bottom-0 shadow-sm z-10 pointer-events-none transition-opacity ${t(theme, 'bg-slate-400 opacity-80', 'bg-slate-500 opacity-90')}`}
+                      style={{ width: `${thickness}px`, left: `${visualIndex * 16.6 + 8.3}%` }}
+                    />
+                  );
+                })}
+
+                {showHint && currentChord.positions.map((pos, idx) => (
+                  <div key={`hint-${idx}`} className="absolute z-30 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500/30 rounded-full border-2 border-amber-500/50 animate-pulse transition-all pointer-events-none"
+                    style={{ top: `${(pos.fret - 0.5) * (100 / FRET_COUNT)}%`, left: `${renderStrings.indexOf(pos.string) * 16.6 + 8.3}%` }}
+                  />
+                ))}
+
+                {placedFingers.map((finger) => {
+                  const visualIndex = renderStrings.indexOf(finger.string);
+                  return (
+                    <div key={finger.id} className="absolute z-50 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500 rounded-full shadow-[0_5px_15px_rgba(245,158,11,0.5)] flex items-center justify-center text-slate-900 font-black border-4 border-white transition-all transform scale-100 animate-in zoom-in-50"
+                      style={{ top: `${(finger.fret - 0.5) * (100 / FRET_COUNT)}%`, left: `${visualIndex * 16.6 + 8.3}%` }}
+                    >
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* BOTÕES DIREITA: DICA E RESET */}
+          <div className="flex flex-col gap-3 h-full justify-center">
+            <button
+              onClick={useHint}
+              disabled={hintsLeft <= 0 || showHint || gameState !== 'playing'}
+              className={`w-12 h-16 md:w-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
+              <div className="flex gap-0.5 mt-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`w-1 h-1 rounded-full ${i < hintsLeft ? 'bg-amber-500' : 'bg-slate-500'}`}></div>
+                ))}
+              </div>
+            </button>
+
+            <button
+              onClick={clearFingers}
+              className={`w-12 h-16 md:w-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex items-center justify-center ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}
+              title="Resetar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+            </button>
           </div>
         </div>
 
-        <div className="mt-2 text-center px-4 min-h-[24px]">
+        <div className="mt-4 text-center px-4 min-h-[24px]">
           {feedback.status === 'correct' ? (
             <div className="text-emerald-500 font-black animate-bounce text-xl tracking-tight">
               {feedback.message} <span className="text-sm">+5s</span>
@@ -541,30 +585,6 @@ export default function App() {
               "{MOTIVATIONAL_MESSAGES[score % MOTIVATIONAL_MESSAGES.length]}"
             </div>
           )}
-        </div>
-
-        <div className="mt-auto pt-4 w-full max-w-sm flex gap-2">
-          <button onClick={undo} disabled={history.length === 0} className={`flex-1 py-3.5 rounded-2xl font-bold transition-all active:scale-95 border flex items-center justify-center gap-2 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
-            Desfazer
-          </button>
-
-          <button onClick={useHint} disabled={hintsLeft <= 0 || showHint || gameState !== 'playing'} className={`flex-1 py-3.5 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}>
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
-              <span>Dica</span>
-            </div>
-            <div className="text-[9px] uppercase font-black opacity-60">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <span key={i} className={i < hintsLeft ? 'text-amber-500' : 'text-slate-500'}>●</span>
-              ))}
-            </div>
-          </button>
-
-          <button onClick={clearFingers} className={`flex-1 py-3.5 rounded-2xl font-bold transition-all active:scale-95 border flex items-center justify-center gap-2 ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-            Resetar
-          </button>
         </div>
       </main>
 
