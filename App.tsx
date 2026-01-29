@@ -127,11 +127,10 @@ export default function App() {
 
     setSaveStatus('saving');
     const finalScore = score; // Captura valor atual
-    // Ajustado para refletir os novos pontos (130 por acorde básico)
-    // Se 1 acorde = 130 pts, queremos que dê aproximadamente 13 XP por acorde se XP = score/10.
-    // O usuário disse que ganhou 6 de XP em uma partida e achou pouco.
-    // Com 130 pts por acorde, 1 acerto = 13 XP. Isso parece atingir o objetivo.
-    const experienceGained = Math.floor(finalScore / 10);
+
+    // XP aumentado - Agora 1 ponto = 1 XP conforme feedback de "pouco XP"
+    // Com 130 pontos por acorde básico, o jogador ganha 130 XP por acerto.
+    const experienceGained = finalScore;
 
     console.log("Iniciando sincronização com Galeria...", {
       player_id: playerInfo.id,
@@ -258,7 +257,13 @@ export default function App() {
 
   const handlePointerEnter = (string: StringNumber, fret: number) => {
     if (isDragging && dragStart && fret === dragStart.fret) {
-      toggleFinger(string, fret);
+      // Quando arrasta (pestana), nós apenas ADICIONAMOS se não existir.
+      // Isso evita o comportamento de "pisca-pisca" ou remover sem querer.
+      setPlacedFingers(prev => {
+        const exists = prev.find(f => f.string === string && f.fret === fret);
+        if (exists) return prev;
+        return [...prev, { id: Math.random().toString(36).substr(2, 9), string, fret }];
+      });
     }
   };
 
@@ -432,7 +437,7 @@ export default function App() {
                 <div className="text-[10px] text-red-500 font-bold uppercase mb-4 tracking-widest">Erro ao salvar na Galeria.</div>
               )}
 
-              <p className="text-slate-400 text-sm mb-8">Ótima evolução! XP ganho: +{Math.floor(score / 10)}</p>
+              <p className="text-slate-400 text-sm mb-8">Ótima evolução! XP ganho: +{score}</p>
               <button onClick={startGame} className="w-full py-4 bg-amber-500 text-slate-950 rounded-2xl font-bold text-xl hover:bg-amber-400 transition-all active:scale-95">Jogar de Novo</button>
             </div>
           </div>
@@ -467,19 +472,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 md:gap-6 w-full max-w-2xl px-2">
-          {/* BOTÃO ESQUERDA: DESFAZER */}
-          <div className="flex flex-col h-full justify-center">
-            <button
-              onClick={undo}
-              disabled={history.length === 0}
-              className={`w-12 h-24 md:w-16 md:h-32 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-2 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}
-              title="Desfazer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
-              <span className="text-[8px] uppercase tracking-tighter hidden md:block">Undo</span>
-            </button>
-          </div>
+        <div className="flex items-center justify-center gap-4 md:gap-8 w-full max-w-2xl px-2">
 
           {/* CENTRO: BRAÇO DO VIOLÃO */}
           <div className={`relative rounded-[2rem] p-4 md:p-6 shadow-2xl border transition-all fret-board-container ${t(theme, 'bg-slate-900 border-slate-800', 'bg-white border-zinc-200')}`}>
@@ -494,7 +487,7 @@ export default function App() {
               })}
             </div>
 
-            <div className="w-48 md:w-56 h-[35vh] md:h-[40vh] min-h-[280px] max-h-[420px] relative flex flex-col mx-auto">
+            <div className="w-48 md:w-56 h-[35vh] md:h-[40vh] min-h-[300px] max-h-[450px] relative flex flex-col mx-auto">
               <div className={`h-4 rounded-t-xl w-full shrink-0 z-20 shadow-md ${t(theme, 'bg-slate-500', 'bg-slate-300')}`}></div>
 
               <div className="flex-1 flex flex-col relative touch-none">
@@ -540,8 +533,13 @@ export default function App() {
                 {placedFingers.map((finger) => {
                   const visualIndex = renderStrings.indexOf(finger.string);
                   return (
-                    <div key={finger.id} className="absolute z-50 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500 rounded-full shadow-[0_5px_15px_rgba(245,158,11,0.5)] flex items-center justify-center text-slate-900 font-black border-4 border-white transition-all transform scale-100 animate-in zoom-in-50"
+                    <div key={finger.id}
+                      className="absolute z-50 w-8 h-8 -ml-[16px] -mt-[16px] bg-amber-500 rounded-full shadow-[0_5px_15px_rgba(245,158,11,0.5)] flex items-center justify-center text-slate-900 font-black border-4 border-white transition-all transform scale-100 animate-in zoom-in-50 cursor-pointer"
                       style={{ top: `${(finger.fret - 0.5) * (100 / FRET_COUNT)}%`, left: `${visualIndex * 16.6 + 8.3}%` }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        toggleFinger(finger.string, finger.fret);
+                      }}
                     >
                     </div>
                   );
@@ -550,15 +548,25 @@ export default function App() {
             </div>
           </div>
 
-          {/* BOTÕES DIREITA: DICA E RESET */}
-          <div className="flex flex-col gap-3 h-full justify-center">
+          {/* COLUNA LATERAL DIREITA: TODOS OS BOTÕES */}
+          <div className="flex flex-col gap-3 h-full justify-center min-w-[70px] md:min-w-[90px]">
+            <button
+              onClick={undo}
+              disabled={history.length === 0}
+              className={`w-full h-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-1 ${history.length === 0 ? 'opacity-30 cursor-not-allowed' : ''} ${t(theme, 'bg-slate-800 border-slate-700 text-white', 'bg-zinc-200 border-zinc-300 text-slate-900')}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></svg>
+              <span className="text-[9px] uppercase font-black">Voltar</span>
+            </button>
+
             <button
               onClick={useHint}
               disabled={hintsLeft <= 0 || showHint || gameState !== 'playing'}
-              className={`w-12 h-16 md:w-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}
+              className={`w-full h-20 md:h-24 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center relative overflow-hidden ${hintsLeft <= 0 || showHint ? 'opacity-30 cursor-not-allowed' : t(theme, 'bg-slate-800 border-slate-700 text-amber-500', 'bg-zinc-200 border-zinc-300 text-amber-600')}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
-              <div className="flex gap-0.5 mt-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></svg>
+              <span className="text-[9px] uppercase font-black mt-1">Dica</span>
+              <div className="flex gap-0.5 mt-0.5">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className={`w-1 h-1 rounded-full ${i < hintsLeft ? 'bg-amber-500' : 'bg-slate-500'}`}></div>
                 ))}
@@ -567,10 +575,10 @@ export default function App() {
 
             <button
               onClick={clearFingers}
-              className={`w-12 h-16 md:w-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex items-center justify-center ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}
-              title="Resetar"
+              className={`w-full h-16 md:h-20 rounded-2xl font-bold transition-all active:scale-95 border flex flex-col items-center justify-center gap-1 ${t(theme, 'bg-slate-800 border-slate-700 text-red-400', 'bg-zinc-200 border-zinc-300 text-red-600')}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+              <span className="text-[9px] uppercase font-black">Limpar</span>
             </button>
           </div>
         </div>
